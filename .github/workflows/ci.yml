@@ -13,7 +13,7 @@ jobs:
 
     # Postgres service container — mirrors the local docker-compose setup.
     # Tests connect as lynda/lynda_dev_only on 127.0.0.1:5432 against the
-    # lynda_test database. Credentials match app/config.py defaults so
+    # dess_test database. Credentials match app/config.py defaults so
     # no env-var fiddling is needed.
     services:
       postgres:
@@ -21,7 +21,7 @@ jobs:
         env:
           POSTGRES_USER: lynda
           POSTGRES_PASSWORD: lynda_dev_only
-          POSTGRES_DB: lynda_test
+          POSTGRES_DB: dess_test
         ports:
           - 5432:5432
         options: >-
@@ -48,27 +48,27 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
       # The Postgres service container's POSTGRES_DB only creates one DB
-      # (lynda_test). One safety-rails test connects to the "lynda" dev
+      # (dess_test). One safety-rails test connects to the "lynda" dev
       # DB to confirm columns exist there too — create it explicitly.
       - name: Create dev database
         env:
           PGPASSWORD: lynda_dev_only
-        run: psql -h localhost -U lynda -d lynda_test -c "CREATE DATABASE lynda OWNER lynda;"
+        run: psql -h localhost -U lynda -d dess_test -c "CREATE DATABASE dess OWNER lynda;"
 
       - name: Apply Alembic migrations to test DB
         env:
-          DATABASE_URL: postgresql+psycopg://lynda:lynda_dev_only@localhost:5432/lynda_test
+          DATABASE_URL: postgresql+psycopg://lynda:lynda_dev_only@localhost:5432/dess_test
         run: alembic upgrade head
 
       - name: Apply Alembic migrations to dev DB (for safety-rail tests)
         env:
-          DATABASE_URL: postgresql+psycopg://lynda:lynda_dev_only@localhost:5432/lynda
+          DATABASE_URL: postgresql+psycopg://lynda:lynda_dev_only@localhost:5432/dess
         run: alembic upgrade head
 
       - name: Run pytest
         env:
-          DATABASE_URL: postgresql+psycopg://lynda:lynda_dev_only@localhost:5432/lynda
-          TEST_DATABASE_URL: postgresql+psycopg://lynda:lynda_dev_only@localhost:5432/lynda_test
+          DATABASE_URL: postgresql+psycopg://lynda:lynda_dev_only@localhost:5432/dess
+          TEST_DATABASE_URL: postgresql+psycopg://lynda:lynda_dev_only@localhost:5432/dess_test
         run: pytest -q
 
       # Check that frontend/src/api/generated_types.ts matches what the
