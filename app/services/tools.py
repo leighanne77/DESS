@@ -196,6 +196,57 @@ class SearchContactsInput(BaseModel):
     )
 
 
+class AcceptSatchelCharterInput(BaseModel):
+    """Record the teammate's acceptance of the Satchel charter — the
+    one-time consent that unlocks Satchel's web errands. Call ONLY right
+    after the teammate explicitly agrees to the charter in their own
+    words; never infer consent."""
+
+    confirmed: bool = Field(
+        ...,
+        description=(
+            "Must be true. Set true ONLY after the teammate has just, "
+            "explicitly, accepted the charter."
+        ),
+    )
+
+
+class SatchelWebCheckInput(BaseModel):
+    """Send Satchel to the PUBLIC WEB for one contact's missing details
+    (title, employer, published email). Use for 'tell Satchel to check
+    the web for X', 'have Satchel look X up online', 'find X's email
+    online'. Returns PROPOSALS with source URLs — nothing is written.
+    Read them back; on the user's explicit yes, apply the approved
+    values via update_contact (only to fields that are still empty)."""
+
+    contact_id: int = Field(..., gt=0)
+
+
+class SatchelOrgScoutInput(BaseModel):
+    """Send Satchel to find the RIGHT PEOPLE at an organization for a
+    stated purpose — people not (necessarily) in the CRM yet. Use for
+    'find the right people at X to invite to Y', 'who at X should we
+    talk to about Y'. Returns CANDIDATES with source URLs — nothing is
+    created. Each person the user wants enters via the normal
+    create_contact intake, one at a time."""
+
+    organization: str = Field(
+        ...,
+        min_length=2,
+        max_length=255,
+        description="The organization to scout, as the user names it.",
+    )
+    looking_for: str = Field(
+        ...,
+        min_length=3,
+        max_length=500,
+        description=(
+            "What the people are FOR — the purpose in the user's words, "
+            "e.g. 'invite to the maritime briefing DIN-2026-001'."
+        ),
+    )
+
+
 class CreateEventInput(BaseModel):
     """Catalogue a DIN event. Use for 'create an event', 'catalog the
     Mobile dinner', 'add the demo day to the events list'. Returns the
@@ -768,6 +819,38 @@ TOOL_REGISTRY: dict[str, ToolSpec] = {
             "to the caller, or if owner_email is not on the DIN team."
         ),
         input_model=CreateNextStepInput,
+    ),
+    "accept_satchel_charter": ToolSpec(
+        name="accept_satchel_charter",
+        description=(
+            "Record the teammate's acceptance of the Satchel charter (the "
+            "one-time consent that unlocks Satchel's web errands). Call "
+            "ONLY after they explicitly agree — never infer consent."
+        ),
+        input_model=AcceptSatchelCharterInput,
+    ),
+    "satchel_web_check": ToolSpec(
+        name="satchel_web_check",
+        description=(
+            "Satchel searches the PUBLIC WEB for one contact's missing "
+            "details (title, employer, published email) — proposals with "
+            "source URLs, nothing written. Requires the Satchel charter; "
+            "works only on contacts the caller OWNS. On the user's yes, "
+            "apply approved values via update_contact (empty fields only)."
+        ),
+        input_model=SatchelWebCheckInput,
+    ),
+    "satchel_org_scout": ToolSpec(
+        name="satchel_org_scout",
+        description=(
+            "Satchel scouts an ORGANIZATION's public footprint for the "
+            "right people for a stated purpose ('find who at X to invite "
+            "to Y') — CANDIDATES with source URLs, nothing created. "
+            "Requires the Satchel charter. Each approved person is then "
+            "created via the normal create_contact intake, one at a time "
+            "— never bulk-created."
+        ),
+        input_model=SatchelOrgScoutInput,
     ),
     "create_event": ToolSpec(
         name="create_event",

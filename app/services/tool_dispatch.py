@@ -40,10 +40,13 @@ from app.services.privacy import redactable_contacts_query, visible_contacts_que
 from app.services.tools import (
     TOOL_REGISTRY,
     CompleteNextStepInput,
+    AcceptSatchelCharterInput,
     CreateContactInput,
     CreateEventInput,
     ListEventsInput,
     RecordEventInviteInput,
+    SatchelOrgScoutInput,
+    SatchelWebCheckInput,
     UpdateEventInput,
     CreateGoogleTaskInput,
     CreateNextStepInput,
@@ -1520,6 +1523,180 @@ def _handle_record_event_invite(
     }
 
 
+def _run_coroutine_blocking(coro):
+    """Run an async coroutine from this sync handler, which executes on
+    the event-loop thread of an async endpoint (so asyncio.run here would
+    raise). A short-lived worker thread with its own loop is the honest
+    escape hatch; the web pass is capped, so the block is bounded."""
+    import asyncio
+    import threading
+
+    box: dict[str, Any] = {}
+
+    def worker() -> None:
+        try:
+            box["value"] = asyncio.run(coro)
+        except Exception as e:  # noqa: BLE001 — re-raised below
+            box["error"] = e
+
+    t = threading.Thread(target=worker)
+    t.start()
+    t.join()
+    if "error" in box:
+        raise box["error"]
+    return box["value"]
+
+
+def _handle_accept_satchel_charter(
+    params: AcceptSatchelCharterInput, user: User, db: Session
+) -> dict[str, Any]:
+    """Record the teammate's charter acceptance. The `confirmed` guard is
+    belt-and-suspenders: the assistant should only call this after the
+    teammate explicitly agrees, and must pass confirmed=true to do it."""
+    from app.services.satchel_charter import SATCHEL_CHARTER, record_acknowledgment
+
+    if not params.confirmed:
+        return {
+            "error": "not_confirmed",
+            "message": (
+                "Only call this after the teammate explicitly accepts the "
+                "Satchel charter. Show them the charter and ask first."
+            ),
+        }
+    record_acknowledgment(db, user)
+    return {"acknowledged": True, "charter": SATCHEL_CHARTER}
+
+
+def _handle_satchel_web_check(
+    params: SatchelWebCheckInput, user: User, db: Session
+) -> dict[str, Any]:
+    """Voice door to Satchel's public-web pass.
+
+    Gates: charter acknowledged, caller OWNS the contact, proposals only —
+    writing happens later via update_contact after the user approves, so
+    the review step survives the voice path.
+    """
+    from app.services import web_enrich
+    from app.services.satchel_charter import is_acknowledged
+
+    if not is_acknowledged(db, user):
+        return {
+            "error": "charter_required",
+            "message": (
+                "Satchel needs his charter acknowledged first — say "
+                "'accept the Satchel charter' and try again."
+            ),
+        }
+    contact = db.scalars(
+        select(Contact).where(
+            Contact.id == params.contact_id,
+            Contact.owner_id == user.id,
+        )
+    ).first()
+    if contact is None:
+        return {
+            "error": "not_owned",
+            "message": (
+                f"Contact {params.contact_id} isn't yours to enrich — "
+                "Satchel only checks the web for contacts you own."
+            ),
+        }
+    web_gaps = web_enrich.missing_fields(contact)
+    if not web_gaps:
+        return {
+            "checked": 0,
+            "message": (
+                f"{contact.name} has no web-fillable gaps — nothing for "
+                "Satchel to hunt."
+            ),
+        }
+    proposals, checked, searches = _run_coroutine_blocking(
+        web_enrich.propose_from_web([contact], {contact.id: web_gaps})
+    )
+    write_audit_row(
+        db,
+        user,
+        action="satchel_web_check",
+        target_type="contact",
+        target_id=contact.id,
+        payload_hash=hash_payload(params),
+        payload_metadata={"checked": checked, "searches": searches},
+    )
+    return {
+        "checked": checked,
+        "searches": searches,
+        "proposals": [p.as_dict() for p in proposals],
+        "reminder": (
+            "Proposals only — read them back with their sources; apply "
+            "approved values via update_contact, and only to fields that "
+            "are still empty."
+        ),
+    }
+
+
+def _handle_satchel_org_scout(
+    params: SatchelOrgScoutInput, user: User, db: Session
+) -> dict[str, Any]:
+    """Satchel's discovery pass: the right people AT an organization for
+    a stated purpose — people who may not be in the CRM at all yet.
+
+    Same charter gate as the web check. Candidates are proposals with
+    sources; each one the user wants goes through the NORMAL
+    create_contact intake — the scout writes nothing. As a courtesy,
+    each candidate is cross-checked against the user's visible contacts
+    so the assistant can say 'already in the book' instead of
+    re-creating them.
+    """
+    from app.services import org_scout
+    from app.services.satchel_charter import is_acknowledged
+
+    if not is_acknowledged(db, user):
+        return {
+            "error": "charter_required",
+            "message": (
+                "Satchel needs his charter acknowledged first — say "
+                "'accept the Satchel charter' and try again."
+            ),
+        }
+    candidates, searches, note = _run_coroutine_blocking(
+        org_scout.scout_org(params.organization, params.looking_for)
+    )
+    rows = []
+    for c in candidates:
+        row = c.as_dict()
+        existing = db.scalars(
+            visible_contacts_query(user).where(Contact.name.ilike(c.name)).limit(1)
+        ).first()
+        row["already_in_crm"] = existing.id if existing else None
+        rows.append(row)
+    write_audit_row(
+        db,
+        user,
+        action="satchel_org_scout",
+        target_type="organization",
+        target_id=None,
+        payload_hash=hash_payload(params),
+        payload_metadata={
+            "organization": params.organization,
+            "candidates": len(rows),
+            "searches": searches,
+        },
+    )
+    return {
+        "organization": params.organization,
+        "looking_for": params.looking_for,
+        "searches": searches,
+        "candidates": rows,
+        "note": note,
+        "reminder": (
+            "Candidates only — NOTHING was created. Read them back with "
+            "title, why, and source. For each person the user wants, run "
+            "the normal create_contact intake, one at a time; candidates "
+            "already_in_crm just need the next step, not a new contact."
+        ),
+    }
+
+
 HANDLERS: dict[str, Callable[[Any, User, Session], dict[str, Any]]] = {
     "search_contacts": _handle_search,
     "create_contact": _handle_create,
@@ -1538,6 +1715,9 @@ HANDLERS: dict[str, Callable[[Any, User, Session], dict[str, Any]]] = {
     "list_events": _handle_list_events,
     "update_event": _handle_update_event,
     "record_event_invite": _handle_record_event_invite,
+    "accept_satchel_charter": _handle_accept_satchel_charter,
+    "satchel_web_check": _handle_satchel_web_check,
+    "satchel_org_scout": _handle_satchel_org_scout,
 }
 
 

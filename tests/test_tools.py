@@ -107,6 +107,9 @@ def test_registry_has_all_expected_tools() -> None:
         "list_events",
         "update_event",
         "record_event_invite",
+        "accept_satchel_charter",
+        "satchel_web_check",
+        "satchel_org_scout",
     }
 
 

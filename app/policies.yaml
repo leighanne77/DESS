@@ -47,6 +47,10 @@ agents:
         - list_events
         - update_event
         - record_event_invite
+        # Satchel web lanes: charter-gated, proposals-only, search-capped.
+        - accept_satchel_charter
+        - satchel_web_check
+        - satchel_org_scout
       # Destructive ops: CONFIRM = human confirmation, enforced
       # server-side by two-step confirm tokens inside the handlers.
       # transfer_contact is equally token-gated even though listed under
