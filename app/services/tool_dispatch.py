@@ -23,7 +23,7 @@ from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.models import Contact, NextStep, Relationship, User
+from app.models import Contact, Event, EventContact, NextStep, Relationship, User
 from app.services import agent_context, confirm_tokens, policy
 from app.services.audit import hash_payload, write_audit_row
 from app.services.fly_status import fly_status_search_priority, unknown_search_rank
@@ -41,6 +41,10 @@ from app.services.tools import (
     TOOL_REGISTRY,
     CompleteNextStepInput,
     CreateContactInput,
+    CreateEventInput,
+    ListEventsInput,
+    RecordEventInviteInput,
+    UpdateEventInput,
     CreateGoogleTaskInput,
     CreateNextStepInput,
     DeleteContactInput,
@@ -364,6 +368,33 @@ def _handle_search(
         stmt = stmt.where(Contact.ex_government == params.ex_government)
     if params.opt_in_status:
         stmt = stmt.where(Contact.opt_in_status == params.opt_in_status)
+    # Event tie: "who did we invite to X" / "who attended X". Semantics:
+    # Attended = came; Invited = invited and did NOT come; omitted = all.
+    matched_event = None
+    if params.event:
+        from app.services import events as ev_service
+
+        _event = ev_service.find_event(db, params.event)
+        if _event is None:
+            return {
+                "error": "event_not_found",
+                "message": (
+                    f"No single event matches '{params.event}'. Use "
+                    "list_events to find the catalog number."
+                ),
+            }
+        matched_event = {
+            "catalog_number": _event.catalog_number,
+            "title": _event.title,
+        }
+        tie = select(EventContact.contact_id).where(
+            EventContact.event_id == _event.id,
+            EventContact.deleted_at.is_(None),
+        )
+        if params.event_status:
+            tie = tie.where(EventContact.status == params.event_status)
+        stmt = stmt.where(Contact.id.in_(tie))
+
     # Retired: default 'exclude' keeps them mostly hidden; 'only' answers
     # "show me retired contacts"; "include" adds no clause — everyone.
     if params.retired_filter == "exclude":
@@ -430,12 +461,17 @@ def _handle_search(
             payload_hash=hash_payload(params),
         )
 
-    return {
+    result = {
         "count": len(formatted),
         "truncated": visible_overflow or redacted_overflow,
         "limit": SEARCH_RESULT_LIMIT,
         "results": formatted,
     }
+    if matched_event is not None:
+        # Which event the by-event filter resolved to, so the assistant
+        # can say "4 attended DIN-2026-001".
+        result["event"] = matched_event
+    return result
 
 
 def _handle_create(
@@ -1292,6 +1328,198 @@ def _handle_complete_next_step(
     return {"completed": {"id": step.id, "done_at": step.done_at.isoformat()}}
 
 
+def _handle_create_event(
+    params: CreateEventInput, user: User, db: Session
+) -> dict[str, Any]:
+    """Catalogue an event; the catalog number is the durable handle."""
+    from datetime import date as _date
+
+    from app.services import events as ev_service
+
+    event_date = None
+    if params.event_date:
+        try:
+            event_date = _date.fromisoformat(params.event_date)
+        except ValueError:
+            return {"error": "bad_date", "message": "event_date must be YYYY-MM-DD."}
+    event = ev_service.create_event(
+        db,
+        title=params.title,
+        created_by_id=user.id,
+        event_date=event_date,
+        location=params.location,
+        notes=params.notes,
+    )
+    write_audit_row(
+        db,
+        user,
+        action="create_event",
+        target_type="event",
+        target_id=event.id,
+        payload_hash=hash_payload(params),
+        payload_metadata={
+            "catalog_number": event.catalog_number,
+            "title": event.title,
+        },
+    )
+    return {
+        "created_event": {
+            "id": event.id,
+            "catalog_number": event.catalog_number,
+            "title": event.title,
+            "event_date": str(event.event_date) if event.event_date else None,
+            "location": event.location,
+        }
+    }
+
+
+def _handle_list_events(
+    params: ListEventsInput, user: User, db: Session
+) -> dict[str, Any]:
+    """List events with invite/attendance counts (counts are team-level
+    facts; names only come back through search_contacts, which filters)."""
+    stmt = select(Event).where(Event.deleted_at.is_(None))
+    if params.query:
+        stmt = stmt.where(Event.title.ilike(f"%{params.query}%"))
+    if params.year:
+        stmt = stmt.where(Event.catalog_number.like(f"DIN-{params.year}-%"))
+    events = list(db.scalars(stmt.order_by(Event.catalog_number.desc()).limit(50)))
+    out = []
+    for e in events:
+        ties = list(
+            db.scalars(
+                select(EventContact).where(
+                    EventContact.event_id == e.id,
+                    EventContact.deleted_at.is_(None),
+                )
+            )
+        )
+        out.append(
+            {
+                "id": e.id,
+                "catalog_number": e.catalog_number,
+                "title": e.title,
+                "event_date": str(e.event_date) if e.event_date else None,
+                "location": e.location,
+                "notes": e.notes,
+                "invited_count": len(ties),
+                "attended_count": sum(1 for t in ties if t.status == "Attended"),
+            }
+        )
+    return {"count": len(out), "events": out}
+
+
+def _handle_update_event(
+    params: UpdateEventInput, user: User, db: Session
+) -> dict[str, Any]:
+    """Update event fields; the catalog number is immutable by design."""
+    from datetime import date as _date
+
+    from app.services import events as ev_service
+
+    event = ev_service.find_event(db, params.event)
+    if event is None:
+        return {
+            "error": "event_not_found",
+            "message": (
+                f"No single event matches '{params.event}'. Use list_events "
+                "to find the catalog number."
+            ),
+        }
+    changed: dict[str, Any] = {}
+    if params.title is not None:
+        event.title = params.title
+        changed["title"] = params.title
+    if params.event_date is not None:
+        try:
+            event.event_date = _date.fromisoformat(params.event_date)
+        except ValueError:
+            return {"error": "bad_date", "message": "event_date must be YYYY-MM-DD."}
+        changed["event_date"] = params.event_date
+    if params.location is not None:
+        event.location = params.location
+        changed["location"] = params.location
+    if params.notes is not None:
+        event.notes = params.notes
+        changed["notes"] = True  # content may be long; flag not payload
+    if not changed:
+        return {"error": "no_fields", "message": "Nothing to update was provided."}
+    db.commit()
+    write_audit_row(
+        db,
+        user,
+        action="update_event",
+        target_type="event",
+        target_id=event.id,
+        payload_hash=hash_payload(params),
+        payload_metadata={
+            "catalog_number": event.catalog_number,
+            "fields": sorted(changed.keys()),
+        },
+    )
+    return {
+        "updated_event": {
+            "catalog_number": event.catalog_number,
+            "title": event.title,
+            "event_date": str(event.event_date) if event.event_date else None,
+            "location": event.location,
+            "notes": event.notes,
+        }
+    }
+
+
+def _handle_record_event_invite(
+    params: RecordEventInviteInput, user: User, db: Session
+) -> dict[str, Any]:
+    """Tie a visible contact to an event as Invited/Attended (forward-only)."""
+    from app.services import events as ev_service
+
+    event = ev_service.find_event(db, params.event)
+    if event is None:
+        return {
+            "error": "event_not_found",
+            "message": (
+                f"No single event matches '{params.event}'. Use list_events "
+                "to find the catalog number."
+            ),
+        }
+    contact = db.scalars(
+        visible_contacts_query(user).where(Contact.id == params.contact_id)
+    ).first()
+    if contact is None:
+        return {
+            "error": "not_found",
+            "message": f"Contact {params.contact_id} is not visible to you.",
+        }
+    row = ev_service.record_invite(
+        db,
+        event_id=event.id,
+        contact_id=contact.id,
+        status=params.status,
+        created_by_id=user.id,
+        note=params.note,
+    )
+    write_audit_row(
+        db,
+        user,
+        action="record_event_invite",
+        target_type="contact",
+        target_id=contact.id,
+        payload_hash=hash_payload(params),
+        payload_metadata={
+            "catalog_number": event.catalog_number,
+            "status": row.status,
+        },
+    )
+    return {
+        "event": {"catalog_number": event.catalog_number, "title": event.title},
+        "contact_id": contact.id,
+        "contact_name": contact.name,
+        "status": row.status,
+        "note": row.note,
+    }
+
+
 HANDLERS: dict[str, Callable[[Any, User, Session], dict[str, Any]]] = {
     "search_contacts": _handle_search,
     "create_contact": _handle_create,
@@ -1306,6 +1534,10 @@ HANDLERS: dict[str, Callable[[Any, User, Session], dict[str, Any]]] = {
     "transfer_contact": _handle_transfer_contact,
     "create_next_step": _handle_create_next_step,
     "complete_next_step": _handle_complete_next_step,
+    "create_event": _handle_create_event,
+    "list_events": _handle_list_events,
+    "update_event": _handle_update_event,
+    "record_event_invite": _handle_record_event_invite,
 }
 
 

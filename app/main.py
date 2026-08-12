@@ -17,6 +17,7 @@ from app.routers import (
     auth,
     chat,
     contacts,
+    events,
     exports,
     health,
     next_steps,
@@ -64,6 +65,7 @@ def create_app() -> FastAPI:
     app.include_router(health.router, prefix="/api")
     app.include_router(auth.router, prefix="/api")
     app.include_router(contacts.router, prefix="/api")
+    app.include_router(events.router, prefix="/api")
     app.include_router(users.router, prefix="/api")
     app.include_router(chat.router, prefix="/api")
     app.include_router(exports.router, prefix="/api")

@@ -43,6 +43,10 @@ agents:
         - transfer_contact
         - create_next_step
         - complete_next_step
+        - create_event
+        - list_events
+        - update_event
+        - record_event_invite
       # Destructive ops: CONFIRM = human confirmation, enforced
       # server-side by two-step confirm tokens inside the handlers.
       # transfer_contact is equally token-gated even though listed under

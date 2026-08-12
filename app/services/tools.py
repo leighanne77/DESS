@@ -167,6 +167,23 @@ class SearchContactsInput(BaseModel):
             "intro approval' (PENDING) data-cleanup passes."
         ),
     )
+    event: str | None = Field(
+        None,
+        max_length=255,
+        description=(
+            "Restrict to contacts tied to one EVENT — catalog number "
+            "(e.g. 'DIN-2026-001') or a unique title fragment. Use for "
+            "'who did we invite to the dinner' / 'who attended X'."
+        ),
+    )
+    event_status: Literal["Invited", "Attended"] | None = Field(
+        None,
+        description=(
+            "With `event`: 'Attended' = people who came; 'Invited' = "
+            "people invited who did NOT attend; omitted = everyone tied "
+            "to the event. Map 'invited but didn't come' to 'Invited'."
+        ),
+    )
     retired_filter: Literal["exclude", "include", "only"] = Field(
         "exclude",
         description=(
@@ -175,6 +192,80 @@ class SearchContactsInput(BaseModel):
             "retired contacts'); pass 'include' when they ask to search "
             "everyone including the retired. Never volunteer retired "
             "contacts."
+        ),
+    )
+
+
+class CreateEventInput(BaseModel):
+    """Catalogue a DIN event. Use for 'create an event', 'catalog the
+    Mobile dinner', 'add the demo day to the events list'. Returns the
+    assigned CATALOG NUMBER (e.g. DIN-2026-001) — read it back to the
+    user; it is how the team refers to the event from then on."""
+
+    title: str = Field(
+        ...,
+        min_length=1,
+        max_length=255,
+        description="Short label, e.g. 'Mobile Harbor Dinner'.",
+    )
+    event_date: str | None = Field(
+        None,
+        description="Event date as YYYY-MM-DD if the user gave one.",
+    )
+    location: str | None = Field(None, max_length=255)
+    notes: str | None = Field(None, max_length=2000)
+
+
+class ListEventsInput(BaseModel):
+    """List catalogued events, optionally filtered by a title substring
+    or year. Use for 'what events do we have', 'show me this year's
+    events', 'find the Mobile dinner'."""
+
+    query: str | None = Field(
+        None, max_length=255, description="Case-insensitive title substring."
+    )
+    year: int | None = Field(None, ge=2020, le=2100)
+
+
+class UpdateEventInput(BaseModel):
+    """Update a catalogued event's fields. NOTES REPLACE the existing
+    notes — to append, first read the current notes from list_events and
+    send the merged text."""
+
+    event: str = Field(
+        ...,
+        min_length=1,
+        max_length=255,
+        description="Catalog number (preferred) or unique " "title fragment.",
+    )
+    title: str | None = Field(None, min_length=1, max_length=255)
+    event_date: str | None = Field(None, description="YYYY-MM-DD.")
+    location: str | None = Field(None, max_length=255)
+    notes: str | None = Field(None, max_length=2000)
+
+
+class RecordEventInviteInput(BaseModel):
+    """Tie a contact to an event as Invited or Attended. Use for 'we
+    invited X to the dinner', 'mark Y attended DIN-2026-001', 'X came to
+    the demo day'. Status only moves FORWARD: recording Attended upgrades
+    an Invited row; recording Invited on someone already Attended changes
+    nothing. Resolve the contact with search_contacts first."""
+
+    event: str = Field(
+        ...,
+        min_length=1,
+        max_length=255,
+        description="Catalog number (preferred) or a unique " "title fragment.",
+    )
+    contact_id: int = Field(..., gt=0)
+    status: Literal["Invited", "Attended"] = "Invited"
+    note: str | None = Field(
+        None,
+        max_length=2000,
+        description=(
+            "Event note for THIS person on THIS event — 'brought two "
+            "colleagues', 'asked for the deck'. Updates in place on "
+            "re-record; omit to leave the existing note alone."
         ),
     )
 
@@ -677,6 +768,43 @@ TOOL_REGISTRY: dict[str, ToolSpec] = {
             "to the caller, or if owner_email is not on the DIN team."
         ),
         input_model=CreateNextStepInput,
+    ),
+    "create_event": ToolSpec(
+        name="create_event",
+        description=(
+            "Catalogue a DIN event under a stable catalog number "
+            "(DIN-2026-001). Use for 'create an event', 'catalog the "
+            "Mobile dinner'. Read the assigned catalog number back."
+        ),
+        input_model=CreateEventInput,
+    ),
+    "list_events": ToolSpec(
+        name="list_events",
+        description=(
+            "List catalogued events with their catalog numbers, dates, "
+            "and invite/attendance counts. Use for 'what events do we "
+            "have', 'find the Mobile dinner'."
+        ),
+        input_model=ListEventsInput,
+    ),
+    "update_event": ToolSpec(
+        name="update_event",
+        description=(
+            "Update a catalogued event (title, date, location, notes). "
+            "NOTES REPLACE — for 'add X to the notes', read the current "
+            "notes via list_events and send the merged text. The catalog "
+            "number never changes."
+        ),
+        input_model=UpdateEventInput,
+    ),
+    "record_event_invite": ToolSpec(
+        name="record_event_invite",
+        description=(
+            "Tie a contact to an event: Invited or Attended (Attended "
+            "upgrades, never downgrades). 'We invited X to the dinner' / "
+            "'X attended DIN-2026-001'. Resolve the contact id first."
+        ),
+        input_model=RecordEventInviteInput,
     ),
     "complete_next_step": ToolSpec(
         name="complete_next_step",

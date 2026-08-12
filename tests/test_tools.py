@@ -103,6 +103,10 @@ def test_registry_has_all_expected_tools() -> None:
         "transfer_contact",
         "create_next_step",
         "complete_next_step",
+        "create_event",
+        "list_events",
+        "update_event",
+        "record_event_invite",
     }
 
 
