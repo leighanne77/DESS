@@ -47,11 +47,17 @@ def _require_owner(contact: Contact, current_user: User) -> None:
 
 @router.get("", response_model=list[ContactRead])
 def list_contacts(
+    include_retired: bool = False,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[Contact]:
-    """Return contacts visible to the current user."""
-    return list(db.scalars(visible_contacts_query(current_user)).all())
+    """Return contacts visible to the current user. Retired contacts are
+    excluded unless ?include_retired=true — the list is a browse, not an
+    explicit ask."""
+    stmt = visible_contacts_query(current_user)
+    if not include_retired:
+        stmt = stmt.where(Contact.retired.is_(False))
+    return list(db.scalars(stmt).all())
 
 
 @router.get("/{contact_id}", response_model=ContactRead)
@@ -60,6 +66,8 @@ def get_contact(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Contact:
+    # Fetching someone by id IS the explicit ask, so retired contacts
+    # come back here — the "mostly hidden" posture applies to searches.
     return _load_visible_contact(contact_id, db, current_user)
 
 

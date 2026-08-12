@@ -60,6 +60,11 @@ class ContactNode:
     name: str
     fly_status: str
     opt_in_status: str
+    # Retired people are never offered as intermediaries — asking someone
+    # who has left the field to make a working introduction is exactly the
+    # kind of judgment the gates exist to encode. (A retired TARGET is
+    # allowed: naming the person is the explicit ask.)
+    retired: bool = False
     sectors: tuple[str, ...] = ()
     metro: str = ""
 
@@ -103,13 +108,18 @@ def affinity(fly_status: str) -> float:
     return affinity_for(fly_status)
 
 
-def gate_reason(fly_status: str, opt_in_status: str) -> str | None:
+def gate_reason(
+    fly_status: str, opt_in_status: str, retired: bool = False
+) -> str | None:
     """Return why this contact can't be a node on an intro path, or None
-    if it's usable. Blocklist first, then outreach consent."""
+    if it's usable. Blocklist first, then outreach consent, then
+    retirement (mostly-hidden posture)."""
     if fly_status == BLOCKLIST_FLY_STATUS:
         return "blocklisted (Off Fly List)"
     if opt_in_status != OPT_IN_APPROVED:
         return f"opt-in {opt_in_status.lower()}"
+    if retired:
+        return "retired"
     return None
 
 
@@ -168,7 +178,7 @@ def score_path(path: IntroPath) -> ScoredPath:
     # Gate every intermediary we'd route through. The target itself is
     # not gated — we don't pass *through* the person we want to reach.
     for node in path.intermediaries:
-        reason = gate_reason(node.fly_status, node.opt_in_status)
+        reason = gate_reason(node.fly_status, node.opt_in_status, node.retired)
         if reason is not None:
             return ScoredPath(
                 path, 0.0, 0.0, 0.0, len(path.intermediaries), f"{node.name}: {reason}"

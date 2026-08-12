@@ -26,6 +26,9 @@ class ContactBase(BaseModel):
     sectors: list[str] = Field(default_factory=list)
     is_private: bool = False
     opt_in_status: OptInStatus = "PENDING"
+    # Retired — kept in the CRM, mostly hidden from lists/search/intros
+    # unless explicitly requested.
+    retired: bool = False
     metro: str | None = Field(None, max_length=100)
 
 

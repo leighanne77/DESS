@@ -160,6 +160,7 @@ def _format_contact(
         "lp_subtype": c.lp_subtype,
         "fly_status": c.fly_status,
         "opt_in_status": c.opt_in_status,
+        "retired": c.retired,
         "image_url": c.image_url,
         "ex_government": c.ex_government,
         "is_gov_employee": c.is_gov_employee,
@@ -363,6 +364,12 @@ def _handle_search(
         stmt = stmt.where(Contact.ex_government == params.ex_government)
     if params.opt_in_status:
         stmt = stmt.where(Contact.opt_in_status == params.opt_in_status)
+    # Retired: default 'exclude' keeps them mostly hidden; 'only' answers
+    # "show me retired contacts"; "include" adds no clause — everyone.
+    if params.retired_filter == "exclude":
+        stmt = stmt.where(Contact.retired.is_(False))
+    elif params.retired_filter == "only":
+        stmt = stmt.where(Contact.retired.is_(True))
 
     # Order: Must Fly first ... Off Fly List last (still visible — they
     # can come up if asked for explicitly). Within each tier, fall back to
@@ -692,7 +699,9 @@ def _handle_delete(
 def _handle_summary(
     params: PipelineSummaryInput, user: User, db: Session
 ) -> dict[str, Any]:
-    stmt = visible_contacts_query(user)
+    # Retired contacts don't belong in a pipeline picture — ask for
+    # retired people by name/search instead.
+    stmt = visible_contacts_query(user).where(Contact.retired.is_(False))
     if params.primary_fund:
         stmt = stmt.where(Contact.primary_fund == params.primary_fund)
     contacts = list(db.scalars(stmt))

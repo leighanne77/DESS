@@ -128,6 +128,16 @@ class Contact(Base):
         String(20), default="PENDING", server_default="PENDING", nullable=False
     )
 
+    # Retired — kept in the CRM, mostly hidden (owner decision 2026-08-11).
+    # Archiving without deleting: a retired contact drops out of searches,
+    # pipeline summaries, and intro paths UNLESS the user explicitly asks
+    # for retired people. Deliberately a flag, not a fly_status value or a
+    # soft delete: fly status is about willingness to work with someone,
+    # deletion is about the record not existing — retirement is neither.
+    retired: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
+
     # Headshot URL — strictly optional. When None the card shows nothing
     # in the headshot slot (no stand-in placeholder). When set, expected
     # to be a CDN-hosted square image; the frontend renders it at 56px.

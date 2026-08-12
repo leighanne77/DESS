@@ -167,6 +167,16 @@ class SearchContactsInput(BaseModel):
             "intro approval' (PENDING) data-cleanup passes."
         ),
     )
+    retired_filter: Literal["exclude", "include", "only"] = Field(
+        "exclude",
+        description=(
+            "Retired handling. Default 'exclude' hides retired people; "
+            "'only' when the user asks for retired people ('show me "
+            "retired contacts'); pass 'include' when they ask to search "
+            "everyone including the retired. Never volunteer retired "
+            "contacts."
+        ),
+    )
 
 
 class CreateContactInput(BaseModel):
@@ -293,6 +303,14 @@ class UpdateContactInput(BaseModel):
     lp_subtype: LpSubtype | None = None
     fly_status: FlyStatus | None = None
     image_url: str | None = Field(None, max_length=500)
+    retired: bool | None = Field(
+        None,
+        description=(
+            "Mark this person retired (true) or un-retire them (false). "
+            "Retired contacts stay in the CRM but drop out of searches, "
+            "summaries, and intro paths unless explicitly asked for."
+        ),
+    )
     ex_government: ExGovernment | None = None
     opt_in_status: OptInStatus | None = Field(
         None,

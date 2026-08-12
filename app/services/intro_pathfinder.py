@@ -58,6 +58,7 @@ def _node(c: Contact) -> ContactNode:
         opt_in_status=c.opt_in_status,
         sectors=tuple(c.sectors or ()),
         metro=c.metro or "",
+        retired=c.retired,
     )
 
 
