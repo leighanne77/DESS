@@ -10,10 +10,12 @@ Voice-first team CRM **+ a deterministic warm-introduction engine** for **DIN �
 > (`scripts/seed_dummy_data.py`) lets you clone and run the whole thing end-to-end. It's
 > here to show the engineering — not to expose a live deployment or any real data.
 
-> **Two companion documents:** [`PHILOSOPHY.md`](PHILOSOPHY.md) — the
+> **Three companion documents:** [`PHILOSOPHY.md`](PHILOSOPHY.md) — the
 > operating principles, for the human reader — and [`CLAUDE.md`](CLAUDE.md),
 > the same discipline expressed as an enforceable contract for any coding
-> agent working in this repository.
+> agent working in this repository — and [`ROADMAP.md`](ROADMAP.md), an
+> advance copy of the next major slice: one assistant becoming a crew of
+> agents under the same registry.
 
 ## The build, in five claims
 
