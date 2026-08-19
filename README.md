@@ -10,6 +10,11 @@ Voice-first team CRM **+ a deterministic warm-introduction engine** for **DIN �
 > (`scripts/seed_dummy_data.py`) lets you clone and run the whole thing end-to-end. It's
 > here to show the engineering — not to expose a live deployment or any real data.
 
+> **Two companion documents:** [`PHILOSOPHY.md`](PHILOSOPHY.md) — the
+> operating principles, for the human reader — and [`CLAUDE.md`](CLAUDE.md),
+> the same discipline expressed as an enforceable contract for any coding
+> agent working in this repository.
+
 ## The build, in five claims
 
 **A voice-interface CRM, live in production** for a stealth investor
