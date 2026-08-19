@@ -2,7 +2,7 @@
 
 Auth uses Application Default Credentials — locally that's gcloud's
 ADC; on Cloud Run that's the runtime service account
-(`lynda-crm-run-sa@`), which was granted `roles/speech.client` in
+(`dess-run-sa@`), which was granted `roles/speech.client` in
 Slice 0.
 
 Uses the inline `recognizers/_` config rather than a pre-created

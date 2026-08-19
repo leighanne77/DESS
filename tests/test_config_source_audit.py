@@ -57,7 +57,7 @@ def test_cloud_run_labels_env_vars_as_secret_manager(tmp_path: Path) -> None:
     dotenv = _write_env_file(tmp_path / ".env", {})
     records = audit_config_sources(
         names=["JWT_SECRET"],
-        env={"K_SERVICE": "lynda-crm", "JWT_SECRET": "value-from-secret-4321"},
+        env={"K_SERVICE": "dess-crm", "JWT_SECRET": "value-from-secret-4321"},
         dotenv_path=dotenv,
     )
     assert records[0]["source"] == "secret_manager"

@@ -1,7 +1,7 @@
 """Interactive CLI for the /chat endpoint.
 
 Usage:
-    LYNDA_TOKEN=eyJ... .venv/bin/python -m scripts.test_chat
+    DESS_TOKEN=eyJ... .venv/bin/python -m scripts.test_chat
     # or just run it; it'll prompt for the token
 
 The script keeps conversation history in-process so multi-turn works.
@@ -26,16 +26,16 @@ DEFAULT_BASE_URL = "http://localhost:8000"
 
 
 def _read_token() -> str:
-    token = os.environ.get("LYNDA_TOKEN")
+    token = os.environ.get("DESS_TOKEN")
     if token:
         return token
-    print("No LYNDA_TOKEN env var set.")
+    print("No DESS_TOKEN env var set.")
     return getpass("Paste a bearer token: ").strip()
 
 
 def _print_reply(body: dict[str, object]) -> None:
     reply = body.get("reply", "")
-    print(f"\nLynda: {reply}")
+    print(f"\nDess: {reply}")
     tool_calls = body.get("tool_calls") or []
     if isinstance(tool_calls, list) and tool_calls:
         print(f"  [tools used: {len(tool_calls)}]")
@@ -51,7 +51,7 @@ def _print_reply(body: dict[str, object]) -> None:
 
 
 def main() -> int:
-    base_url = os.environ.get("LYNDA_API_URL", DEFAULT_BASE_URL).rstrip("/")
+    base_url = os.environ.get("DESS_API_URL", DEFAULT_BASE_URL).rstrip("/")
     token = _read_token()
     if not token:
         print("No token provided. Exiting.", file=sys.stderr)

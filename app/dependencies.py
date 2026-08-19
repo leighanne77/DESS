@@ -30,19 +30,19 @@ _unauthorized = HTTPException(
 
 def get_current_user(
     bearer_token: str | None = Depends(oauth2_scheme),
-    lynda_session: str | None = Cookie(default=None),
+    dess_session: str | None = Cookie(default=None),
     db: Session = Depends(get_db),
 ) -> User:
     """Return the current user from cookie or Bearer header, else 401."""
     # Cookie's actual name is configured in Settings, but FastAPI's Cookie()
-    # binds by parameter name. We use `lynda_session` matching the default;
+    # binds by parameter name. We use `dess_session` matching the default;
     # if the setting is overridden in tests, look it up directly.
     settings = get_settings()
-    if settings.session_cookie_name != "lynda_session":
+    if settings.session_cookie_name != "dess_session":
         # Edge case for tests that rename the cookie — not a runtime concern.
-        lynda_session = None
+        dess_session = None
 
-    token = bearer_token or lynda_session
+    token = bearer_token or dess_session
     if not token:
         raise _unauthorized
     user_id = decode_access_token(token)

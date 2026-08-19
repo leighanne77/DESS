@@ -53,6 +53,6 @@ def test_logout_clears_session_cookie(client: TestClient) -> None:
     resp = client.post("/api/auth/logout")
     assert resp.status_code == 204
     set_cookie = resp.headers.get("set-cookie", "")
-    assert "lynda_session" in set_cookie
+    assert "dess_session" in set_cookie
     # Browser interprets max-age=0 or expires in the past as deletion.
     assert "max-age=0" in set_cookie.lower() or "expires=" in set_cookie.lower()

@@ -1,5 +1,5 @@
 /**
- * Typed fetch wrapper around the lynda-crm backend.
+ * Typed fetch wrapper around the DESS backend.
  *
  * Every call sends `credentials: "include"` so the httpOnly session
  * cookie travels automatically. Same shape across login, chat, and

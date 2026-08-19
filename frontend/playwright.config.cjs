@@ -1,5 +1,5 @@
 /**
- * Playwright config for the lynda-crm frontend smoke test.
+ * Playwright config for the dess-crm frontend smoke test.
  *
  * Single-browser (chromium) by design — this suite is a smoke test, not
  * comprehensive coverage. It catches UI regressions without needing the

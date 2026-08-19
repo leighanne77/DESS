@@ -3,8 +3,8 @@
 Tests run against the dess_test database (separate from dev). One-time
 setup outside this file:
 
-    docker compose exec db createdb -U lynda dess_test
-    DATABASE_URL=postgresql+psycopg://lynda:lynda_dev_only@localhost:5432/dess_test \
+    docker compose exec db createdb -U dess dess_test
+    DATABASE_URL=postgresql+psycopg://dess:dess_dev_only@localhost:5432/dess_test \
         .venv/bin/alembic upgrade head
 
 After that, the autouse `_apply_migrations` fixture keeps the schema

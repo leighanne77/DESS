@@ -2,7 +2,7 @@
 const { expect, test } = require("@playwright/test");
 
 /**
- * End-to-end smoke test for the lynda-crm frontend.
+ * End-to-end smoke test for the dess-crm frontend.
  *
  * Every /api/* call is mocked via page.route() so no backend is needed.
  * The test walks the full happy path:
@@ -34,7 +34,7 @@ test("happy path: login -> intro -> dismiss -> chat -> contact card", async ({
       status: 302,
       headers: {
         Location: "/auth/success",
-        "Set-Cookie": "lynda_session=mock-session; Path=/; SameSite=Lax",
+        "Set-Cookie": "dess_session=mock-session; Path=/; SameSite=Lax",
       },
       body: "",
     });

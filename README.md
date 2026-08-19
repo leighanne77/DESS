@@ -10,6 +10,35 @@ Voice-first team CRM **+ a deterministic warm-introduction engine** for **DIN �
 > (`scripts/seed_dummy_data.py`) lets you clone and run the whole thing end-to-end. It's
 > here to show the engineering — not to expose a live deployment or any real data.
 
+## The build, in five claims
+
+**A voice-interface CRM, live in production** for a stealth investor
+network, running on real LP data — full stack, LLM ops (behavioral evals,
+model-cost budgets, prompt-injection testing), on a cloud deployment with
+tiered multi-user access.
+
+**The governance layer LP data requires:** three-tier field handling
+enforced at the query layer, a hashed-payload audit trail with field-level
+diffs, encrypted credentials, an injection-test harness, and controls
+mapped to **NIST AI RMF** and **SR 11-7**.
+
+**Right-sized deliberately.** PostgreSQL throughout; **Spark was rejected
+as over-scaled** for the data volume, and a heavier store would have been
+theater.
+
+**A graph-backed warm-introduction engine** in the same system:
+deterministic, auditable path scoring (`affinity × connection ÷ hops`)
+over a relationship graph held in PostgreSQL and **walked in memory,
+bounded at two hops** — with hard safety gates the model cannot override.
+**No LLM in the trust path.**
+
+**The same discipline applied to the graph itself:** a graph database
+(Neo4j) was evaluated and **deferred, with the revisit trigger written
+down** — when path queries strain into millions of edges. At team scale,
+in-memory enumeration is simpler, fully testable, and one less system to
+secure. The decision record explains itself so a future team can overturn
+it on evidence rather than fashion.
+
 ## 🛠️ Stack
 
 > **No LLM in the trust path.** The model translates the request and narrates the answer; deterministic Python decides who is reachable and how warm a path is — and the privacy filter drops anyone the user is not allowed to see *before* scoring. The assistant can suggest; it cannot decide or leak.

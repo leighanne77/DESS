@@ -3,7 +3,7 @@
 # --- Docker image config (override on the command line, e.g. make docker-push TAG=slice7.2) ---
 AR_REGION ?= us-west1
 AR_PROJECT ?= your-gcp-project
-AR_REPO ?= lynda-crm
+AR_REPO ?= dess-crm
 IMAGE_NAME ?= backend
 TAG ?= $(shell git rev-parse --short HEAD)
 IMAGE_URI = $(AR_REGION)-docker.pkg.dev/$(AR_PROJECT)/$(AR_REPO)/$(IMAGE_NAME):$(TAG)
@@ -57,14 +57,14 @@ frontend:
 	cd frontend && npm run dev
 
 # Local arm64 build for Apple Silicon dev iteration. Loads into the
-# local Docker daemon so `docker run lynda-crm:dev` works immediately.
+# local Docker daemon so `docker run dess-crm:dev` works immediately.
 # Single-platform — multi-arch images can't be --load'ed, only --push'ed.
 docker-local:
-	docker buildx build --platform linux/arm64 -t lynda-crm:dev --load .
+	docker buildx build --platform linux/arm64 -t dess-crm:dev --load .
 
 # Multi-arch prod build (amd64 + arm64) pushed to Artifact Registry.
 # Override TAG to use a non-hash tag, e.g. `make docker-push TAG=slice7.2`.
-# After push, deploy with: gcloud run services update lynda-crm \
+# After push, deploy with: gcloud run services update dess-crm \
 #   --region=$(AR_REGION) --project=$(AR_PROJECT) --image=$(IMAGE_URI)
 #
 # NOTE: on Apple Silicon this emulates amd64 (slow). Prefer `cloud-push` /
@@ -83,5 +83,5 @@ cloud-push:
 # One-shot: build on Cloud Build, then roll out the new revision to Cloud Run.
 # Startup runs `alembic upgrade head` before serving.
 cloud-deploy: cloud-push
-	gcloud run services update lynda-crm \
+	gcloud run services update dess-crm \
 	  --region=$(AR_REGION) --project=$(AR_PROJECT) --image=$(IMAGE_URI)

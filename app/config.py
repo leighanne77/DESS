@@ -26,9 +26,9 @@ class Settings(BaseSettings):
     enterprise_mode: bool = False
 
     # Database
-    database_url: str = "postgresql+psycopg://lynda:lynda_dev_only@localhost:5432/dess"
+    database_url: str = "postgresql+psycopg://dess:dess_dev_only@localhost:5432/dess"
     test_database_url: str = (
-        "postgresql+psycopg://lynda:lynda_dev_only@localhost:5432/dess_test"
+        "postgresql+psycopg://dess:dess_dev_only@localhost:5432/dess_test"
     )
 
     # Anthropic
@@ -70,7 +70,7 @@ class Settings(BaseSettings):
     chat_model: str = "claude-sonnet-4-6"
 
     # Browser session cookie (Day 4 cookie-based auth flow)
-    session_cookie_name: str = "lynda_session"
+    session_cookie_name: str = "dess_session"
     frontend_url: str = "http://localhost:5173"
     frontend_auth_success_path: str = "/auth/success"
 

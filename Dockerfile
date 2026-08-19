@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.6
 #
-# Lynda CRM — multi-stage container image for Cloud Run.
+# Dess CRM — multi-stage container image for Cloud Run.
 #
 # Stage 1 (frontend-build): compile the React/Vite frontend. Only npm
 # tools and source live here; nothing from this stage ships in the

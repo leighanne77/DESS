@@ -1,5 +1,5 @@
 [project]
-name = "lynda-crm"
+name = "dess-crm"
 version = "0.1.0"
 description = "DESS — voice-enabled team CRM for DIN"
 requires-python = ">=3.11"

@@ -16,7 +16,7 @@
 
 substitutions:
   _TAG: latest
-  _REPO: lynda-crm
+  _REPO: dess-crm
   _IMAGE: backend
   _REGION: us-west1
 

@@ -86,8 +86,8 @@ def test_callback_happy_path_sets_session_cookie_and_redirects(
     )
     assert resp.status_code == 303
     assert resp.headers["location"].endswith("/auth/success")
-    cookie = resp.cookies.get("lynda_session")
-    assert cookie, "lynda_session cookie was not set"
+    cookie = resp.cookies.get("dess_session")
+    assert cookie, "dess_session cookie was not set"
 
     user = db.scalars(select(User).where(User.email == "robin@example.com")).first()
     assert user is not None
