@@ -45,7 +45,7 @@ def test_dev_login_rejects_email_off_allowlist(client: TestClient, monkeypatch) 
 
     resp = client.get(
         "/api/auth/dev-login",
-        params={"email": "intruder@evil.com"},
+        params={"email": "intruder@evil.fake"},
         follow_redirects=False,
     )
     assert resp.status_code == 403

@@ -39,7 +39,7 @@ def test_requires_charter_then_returns_proposals(
     proposal = WebProposal(
         contact_id=contact.id,
         contact_name="Gap Person",
-        fields={"title": "CFO", "email": "gap@shield.com"},
+        fields={"title": "CFO", "email": "gap@shieldworks.fake"},
         sources=["https://shield.example/team"],
     )
 
@@ -51,7 +51,7 @@ def test_requires_charter_then_returns_proposals(
             "satchel_web_check", {"contact_id": contact.id}, user, db
         )
     assert r["checked"] == 1
-    assert r["proposals"][0]["fields"]["email"] == "gap@shield.com"
+    assert r["proposals"][0]["fields"]["email"] == "gap@shieldworks.fake"
     assert r["proposals"][0]["sources"] == ["https://shield.example/team"]
 
 
@@ -59,7 +59,7 @@ def test_only_owned_contacts_and_no_gaps_short_circuits(
     db: Session, user_factory: Callable[..., User]
 ) -> None:
     owner = user_factory()
-    other = user_factory(email="satchel-other@fundslccllc.com")
+    other = user_factory(email="satchel-other@otherteam.fake")
     _ack(db, other)
     contact = Contact(name="Not Yours", owner_id=owner.id, is_private=False)
     db.add(contact)
@@ -75,7 +75,7 @@ def test_only_owned_contacts_and_no_gaps_short_circuits(
         owner_id=owner.id,
         title="CEO",
         company_name="Full Co",
-        email="c@full.co",
+        email="c@full.fake",
         cell_phone="+1 555 000 1111",
         office_phone="+1 555 000 2222",
         is_private=False,

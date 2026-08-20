@@ -58,10 +58,10 @@ def test_gov_detect_recognizes_government_domains(email: str) -> None:
     [
         "alice@gmail.com",
         "bob@example.com",
-        "carol@ironclad.com",
+        "carol@ironclad.fake",
         "diana@example.fake",
-        "eve@government.consulting",  # private firm with "government" in name
-        "frank@military.club",  # private domain
+        "eve@government-consulting.fake",  # private firm with "government" in name
+        "frank@military-club.fake",  # private domain
         "",
         None,
     ],
@@ -107,7 +107,7 @@ def test_create_contact_leaves_is_gov_employee_false_for_personal_email(
         "create_contact",
         {
             "name": "Marcus Sterling",
-            "email": "marcus@ironclad.com",
+            "email": "marcus@ironclad.fake",
             "fly_status": "Must Fly",
             "is_private": False,
         },

@@ -5,20 +5,28 @@ here is enforceable *inside this repo* — by a test, a config file, or a
 grep — because an instruction an agent cannot verify is an instruction it
 will eventually ignore.
 
-## 1. The de-identification contract (the cardinal rule)
+## 1. The publication contract (the cardinal rule)
 
-This is a public, scrubbed copy of a private production system. The scrub
-is a one-way door:
+This tree is public. The same system runs privately; the public code is
+authored here and published from here, so there is no copy step and no
+redaction pass to get right — there is a **gate**, and it is
+`tests/test_public_tree_is_deidentified.py`.
 
 - **Never introduce a real person, firm, email domain, or infrastructure
-  identifier.** All example people come from the fictional cast in
-  `scripts/seed_dummy_data.py`. If you need a new example person, add them
-  to the cast — obviously fake, never plausible-and-real.
+  identifier.** Example people come from the fictional cast in
+  `scripts/seed_dummy_data.py`, addressed under the `.fake` TLD. If you
+  need a new one, add them to the cast — obviously fake, never
+  plausible-and-real.
 - **Never reference the private deployment** — its name, its domains, its
   service accounts, its team. If you find such a reference, removing it is
   always in scope, whatever you were asked to do.
-- Check before you commit: `git grep -i` for whatever the private thing
-  would be called. The absence of matches is the contract.
+- **The gate is an allowlist, not a denylist:** every email domain in the
+  tree must be `.fake` or named in `ALLOWED_DOMAINS`. A denylist of
+  private names could not live in a public repository without publishing
+  what it protects, and would only ever catch what someone thought to
+  list. Inverted, an unanticipated real domain fails by default.
+- Adding to `ALLOWED_DOMAINS` is a deliberate act with a written reason.
+  "The test was red" is not a reason.
 
 ## 2. No LLM in the trust path
 

@@ -94,7 +94,7 @@ async def test_guard_blocks_real_email_in_tool_result(
                         {
                             "type": "tool_result",
                             "tool_use_id": "tu_1",
-                            "content": '{"email":"victim@megacorp.com"}',
+                            "content": '{"email":"victim@megacorp.fake"}',
                         }
                     ],
                 },

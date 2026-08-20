@@ -3,8 +3,8 @@
 The operating principles behind DESS — for the human reader.
 ([`CLAUDE.md`](CLAUDE.md) is the companion file: the same discipline
 expressed as enforceable instructions to a coding agent.) The private
-deployment this repository mirrors runs under a fuller operator–agent
-working agreement; this document is the portable core of it.
+deployment that shares this engineering runs under a fuller
+operator–agent working agreement; this document is the portable core of it.
 
 ## The model proposes; code decides
 

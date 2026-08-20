@@ -4,11 +4,14 @@
 
 Voice-first team CRM **+ a deterministic warm-introduction engine** for **DIN — the Dual-Use Investor Network.**
 
-> **About this repository.** This is a **public, scrubbed copy** of a system that runs
-> privately in production for a small dual-use investor team. Client specifics, real people,
-> and infrastructure identifiers have been removed, and a **fictional demo dataset**
-> (`scripts/seed_dummy_data.py`) lets you clone and run the whole thing end-to-end. It's
-> here to show the engineering — not to expose a live deployment or any real data.
+> **About this repository.** This is the **public tree** of a system that also runs
+> privately in production for a small investor team. It is not a copy: the public code is
+> authored here and published from here, behind a **gate that fails the build** if an
+> identifier belonging to the private deployment appears anywhere in it
+> (`tests/test_public_tree_is_deidentified.py`). Nothing is redacted on the way out,
+> because nothing makes the trip. The cast is **fictional throughout**
+> (`scripts/seed_dummy_data.py`) and the whole thing clones and runs end-to-end against
+> it. It's here to show the engineering — not to expose a live deployment or any real data.
 
 > **Three companion documents:** [`PHILOSOPHY.md`](PHILOSOPHY.md) — the
 > operating principles, for the human reader — and [`CLAUDE.md`](CLAUDE.md),

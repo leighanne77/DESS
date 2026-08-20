@@ -81,7 +81,7 @@ def test_privacy_other_users_private_contact_not_flagged(
     """The already-in-CRM check runs through the caller's VISIBLE
     contacts — a teammate's private contact stays invisible."""
     owner = user_factory()
-    caller = user_factory(email="scout-other@fundslccllc.com")
+    caller = user_factory(email="scout-other@otherteam.fake")
     _ack(db, caller)
     db.add(Contact(name="Hidden Match", owner_id=owner.id, is_private=True))
     db.commit()

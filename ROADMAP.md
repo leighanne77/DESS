@@ -1,7 +1,7 @@
 # Roadmap — advance copy
 
 *One item, published before it lands. This is the next major slice for the
-system DESS mirrors, shared in advance because the design says more about
+system behind this tree, shared in advance because the design says more about
 the engineering than the finished feature will. Details will shift in the
 build; the boundaries below are the commitments.*
 

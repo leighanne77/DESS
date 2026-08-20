@@ -73,7 +73,7 @@ def test_audit_covers_all_critical_settings(tmp_path: Path) -> None:
             "GOOGLE_CLIENT_SECRET": "gcs-val",
             "GOOGLE_REDIRECT_URI": "https://x/auth/callback",
             "JWT_SECRET": "jwt-val",
-            "ALLOWED_EMAILS": "a@b.com,c@d.com",
+            "ALLOWED_EMAILS": "a@b.fake,c@d.fake",
             "TOKEN_ENCRYPTION_KEY": "fernet-key-val",
         },
         dotenv_path=dotenv,

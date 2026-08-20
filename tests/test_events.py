@@ -71,7 +71,7 @@ def test_search_by_event_and_status(
     private contact's event tie is invisible to a teammate who can't see
     the contact."""
     owner = user_factory()
-    other = user_factory(email="other2@fundslccllc.com")
+    other = user_factory(email="other2@otherteam.fake")
     event = _make_event(db, owner)["created_event"]
 
     came = Contact(name="Came Along", owner_id=owner.id, is_private=False)
@@ -161,7 +161,7 @@ def test_card_event_endpoints_list_and_annotate(client, db, user_factory) -> Non
     private = Contact(name="Private P", owner_id=user.id, is_private=True)
     db.add(private)
     db.commit()
-    other = user_factory(email="evt-other@fundslccllc.com")
+    other = user_factory(email="evt-other@otherteam.fake")
     other_headers = {"Authorization": f"Bearer {create_access_token(user_id=other.id)}"}
     assert (
         client.get(
