@@ -73,6 +73,13 @@ is a written reason otherwise.
 
 Anything a user pastes — and anything fetched from the web — is wrapped in
 `<USER_DATA>` delimiters and treated as content, never as instructions.
+A delimiter is only worth something if the text inside cannot close it:
+every delimiter-shaped tag in untrusted text is neutralised before it is
+wrapped, on every path (the message, the history, every tool result), and
+decided by normalising the tag rather than by listing spellings, because a
+list always misses one (`_neutralise_delimiters` in `app/routers/chat.py`).
+Untrusted input also has a size ceiling, checked before any work, so one
+request cannot stall the server for everyone else.
 The eval suite (`evals/`) includes prompt-injection cases; run it when you
 touch the prompt, the dispatch loop, or anything that feeds text to the
 model. Brand-restricted vocabulary is tested there too — the term list

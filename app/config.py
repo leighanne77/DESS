@@ -67,6 +67,9 @@ class Settings(BaseSettings):
     chat_output_token_budget_per_day: int = 125_000
     chat_tool_iteration_cap: int = 5
     chat_history_max_turns: int = 20
+    # Total characters across the history, checked before any work: the
+    # history is untrusted, and the two caps above multiply.
+    chat_history_max_chars: int = 40_000
     chat_model: str = "claude-sonnet-4-6"
 
     # Browser session cookie (Day 4 cookie-based auth flow)
