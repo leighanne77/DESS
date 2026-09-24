@@ -32,7 +32,7 @@ def _fresh_policy_cache():
 def test_allows_registered_tool_for_dess_chat() -> None:
     d = evaluate("dess-chat", "search_contacts")
     assert d.verdict is Verdict.ALLOW
-    assert d.policy_version == 1
+    assert d.policy_version == 2
 
 
 def test_delete_contact_requires_confirmation() -> None:
@@ -187,7 +187,7 @@ def test_audit_rows_stamped_with_agent_identity(db, user_factory) -> None:
     ).first()
     assert row is not None
     assert row.payload_metadata["agent_id"] == "dess-chat"
-    assert row.payload_metadata["policy_version"] == 1
+    assert row.payload_metadata["policy_version"] == 2
 
 
 def test_agent_scope_clears_after_dispatch(db, user_factory) -> None:

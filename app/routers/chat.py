@@ -15,6 +15,7 @@ data, never as instructions.
 """
 
 import json
+import re
 from datetime import date
 from typing import Any, Literal
 
@@ -399,8 +400,75 @@ def _system_prompt(mode: Literal["text", "voice"]) -> str:
     return base
 
 
+# Any bracket pair that could be read as the fence's boundary. Look-alike
+# brackets count, because the model was told about one token and may honour a
+# look-alike. The interior is bounded and there are no adjacent quantifiers, so
+# the scan is linear in the length of the text: a pattern like
+# `<\s*/?\s*USER_DATA\s*>` backtracks quadratically on a long run of spaces,
+# which would let one request stall the event loop for every user.
+_CANDIDATE_TAG = re.compile(
+    r"[<\uff1c\u3008\u2039]"
+    r"([^<>\uff1c\uff1e\u3008\u3009\u2039\u203a]{0,40})"
+    r"[>\uff1e\u3009\u203a]"
+)
+
+
+def _is_boundary_token(inner: str) -> bool:
+    """Is this bracket pair's content the fence token, however it is spelled?
+
+    Normalise, then compare. Keeping only letters and digits drops slashes,
+    whitespace, underscores, hyphens, JSON escape characters, and the
+    zero-width and format characters that `\\s` does not match. Enumerating
+    spellings in a pattern always misses one.
+    """
+    return "".join(ch for ch in inner if ch.isalnum()).casefold() == "userdata"
+
+
+def _neutralise_delimiters(text: str) -> str:
+    """Stop untrusted text closing (or reopening) the fence around itself.
+
+    A boundary-shaped tag keeps its content and loses its brackets, which
+    become plain parentheses. Not look-alike brackets: those only move the
+    guess, since an attacker can type the substitute too. Ordinary angle
+    brackets ("Met at <the harbour office>", "5 < 7 > 3") are left as
+    written, so this cannot quietly become "escape everything".
+    """
+
+    def _swap(match: re.Match[str]) -> str:
+        inner = match.group(1)
+        return f"({inner})" if _is_boundary_token(inner) else match.group(0)
+
+    return _CANDIDATE_TAG.sub(_swap, text)
+
+
+def _neutralise_tree(value: Any) -> Any:
+    """Neutralise the strings, then serialise, never the other way round.
+
+    `json.dumps` turns a real newline inside a tag into backslash-n, so a scan
+    of the serialised text would miss `<\\n/USER_DATA>` in a stored note while
+    catching the same string typed as a message.
+    """
+    if isinstance(value, str):
+        return _neutralise_delimiters(value)
+    if isinstance(value, dict):
+        return {k: _neutralise_tree(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_neutralise_tree(v) for v in value]
+    return value
+
+
+def _wrap_tool_result(result: Any) -> str:
+    """Fence a tool result, neutralising values before AND after serialising.
+
+    The second pass is not redundant: `default=str` turns an object the
+    encoder cannot handle into text after the walk has run.
+    """
+    payload = json.dumps(_neutralise_tree(result), default=str)
+    return f"{USER_DATA_OPEN}{_neutralise_delimiters(payload)}{USER_DATA_CLOSE}"
+
+
 def _wrap_user_text(text: str) -> str:
-    return f"{USER_DATA_OPEN}{text}{USER_DATA_CLOSE}"
+    return f"{USER_DATA_OPEN}{_neutralise_delimiters(text)}{USER_DATA_CLOSE}"
 
 
 def _truncate_history(
@@ -447,6 +515,16 @@ async def chat(
         raise HTTPException(
             status_code=status.HTTP_413_CONTENT_TOO_LARGE,
             detail=f"message exceeds {settings.chat_input_max_chars} chars",
+        )
+
+    # The per-message and per-turn caps alone let 20 turns of 20,000
+    # characters through: 400,000 characters of untrusted text neutralised
+    # before the first model call. Bound the total at the door.
+    history_chars = sum(len(h.content) for h in body.history)
+    if history_chars > settings.chat_history_max_chars:
+        raise HTTPException(
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+            detail=f"history exceeds {settings.chat_history_max_chars} chars",
         )
 
     _maybe_reset_daily_budget(current_user, db)
@@ -506,7 +584,7 @@ async def chat(
                 {
                     "type": "tool_result",
                     "tool_use_id": tu.id,
-                    "content": _wrap_user_text(json.dumps(result, default=str)),
+                    "content": _wrap_tool_result(result),
                     "is_error": is_error,
                 }
             )

@@ -18,7 +18,7 @@
 # stamped into logs and audit rows so every decision is attributable to
 # the exact rulebook in force.
 
-version: 1
+version: 2
 
 agents:
   dess-chat:
@@ -94,10 +94,10 @@ registry:
 
   - id: P-05
     name: user-data-sandbox
-    rule: Untrusted text is wrapped in <USER_DATA> delimiters and treated as data, never instructions.
+    rule: Untrusted text is wrapped in <USER_DATA> delimiters and treated as data, never instructions. The text cannot close or reopen its own fence — any delimiter-shaped tag inside it, however spelled, is neutralised on every path (typed message, history, tool results) — and the history has a total size ceiling checked before any work.
     enforced_at: app/routers/chat.py
     status: enforced
-    test: evals/promptfooconfig.yaml (injection cases)
+    test: tests/test_chat.py (fence cases) + evals/promptfooconfig.yaml (injection cases)
 
   - id: P-06
     name: voice-rules-scrubber
