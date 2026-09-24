@@ -76,3 +76,20 @@ def test_no_tracked_file_points_dess_at_5432() -> None:
             if DEFAULT_PORT.search(line):
                 offenders.append(f"{path.relative_to(REPO)}:{i}  {line.strip()}")
     assert not offenders, "DESS must not use port 5432:\n" + "\n".join(offenders)
+
+
+def test_ci_database_commands_name_5433() -> None:
+    """`psql -h localhost` with no `-p` means 5432 — implicitly. The number
+    never appears, so the scan above cannot see it; this does. It is the
+    gap that turned CI red on the day the port moved."""
+    ci = (REPO / ".github" / "workflows" / "ci.yml").read_text()
+    offenders = [
+        line.strip()
+        for line in ci.splitlines()
+        if re.search(r"\b(psql|createdb|dropdb|pg_dump|pg_restore)\b", line)
+        and "-h localhost" in line
+        and f"-p {PORT}" not in line
+    ]
+    assert not offenders, "CI database commands must say -p 5433:\n" + "\n".join(
+        offenders
+    )

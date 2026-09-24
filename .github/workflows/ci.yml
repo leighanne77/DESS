@@ -53,7 +53,7 @@ jobs:
       - name: Create dev database
         env:
           PGPASSWORD: dess_dev_only
-        run: psql -h localhost -U dess -d dess_test -c "CREATE DATABASE dess OWNER dess;"
+        run: psql -h localhost -p 5433 -U dess -d dess_test -c "CREATE DATABASE dess OWNER dess;"
 
       - name: Apply Alembic migrations to test DB
         env:
