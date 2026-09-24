@@ -7,16 +7,24 @@ The demo dataset is the only dataset: nothing here touches real data.
 
 | Piece | What it is | Where it runs |
 |---|---|---|
-| Database | Postgres 15 in Docker, Compose project `dess`, data kept in the volume `dess_pgdata` | `localhost:5433` (not 5432 — see below) |
+| Database | Postgres 15 in Docker, Compose project `dess`, data kept in the volume `dess_pgdata` | `localhost:5434` (not 5432 or 5433 — see below) |
 | Databases inside it | `dess` (the app) and `dess_test` (the tests; wiped by every test run) | same server |
 | Backend | FastAPI app in `app/`, schema changes in `alembic/` | `http://localhost:8000` |
 | Frontend | React + Vite in `frontend/` | `http://localhost:5173` (forwards `/api` to 8000) |
 | Python environment | `.venv/` in the repo folder, Python 3.11 or newer | — |
 | Settings | `.env` (copied from `.env.example`, never committed) | — |
 
-**Why port 5433.** Other Postgres servers on the same machine usually take
-5432. DESS stays off it so it can never connect to someone else's database
-by mistake. `tests/test_database_port.py` fails if anything moves it back.
+**Why port 5434.** Other Postgres servers on the same machine usually take
+5432, and 5433 is where a second Postgres or a Cloud SQL Auth Proxy tunnel
+conventionally listens. DESS stays off both, so it can never connect to
+someone else's database by mistake, and never sits on a port another tool
+expects to be its own tunnel. `tests/test_database_port.py` fails if
+anything moves it back.
+
+**Moving from 5433.** A container started before this change still
+publishes 5433. Recreate it with `docker compose up -d db`: the data
+survives, because the volume is named by the Compose project, not the
+port. A local `.env` copied earlier needs its `5433` changed to `5434`.
 
 ## Once — first-time setup
 
@@ -105,7 +113,7 @@ docker compose down -v                                # ALSO DELETES THE DATA �
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `connection refused` on 5433 | the database is not running | `docker compose up -d db` |
+| `connection refused` on 5434 | the database is not running | `docker compose up -d db` |
 | `Cannot connect to the Docker daemon` | Docker Desktop is closed or signed out | open Docker Desktop, sign in, retry |
 | tests fail with `database "dess_test" does not exist` | first run on a new volume | `docker compose exec db createdb -U dess dess_test` |
 | `NoSuchTableError` in a test that uses the app database | `dess` was never migrated | `.venv/bin/alembic upgrade head` |

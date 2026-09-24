@@ -26,9 +26,9 @@ class Settings(BaseSettings):
     enterprise_mode: bool = False
 
     # Database
-    database_url: str = "postgresql+psycopg://dess:dess_dev_only@localhost:5433/dess"
+    database_url: str = "postgresql+psycopg://dess:dess_dev_only@localhost:5434/dess"
     test_database_url: str = (
-        "postgresql+psycopg://dess:dess_dev_only@localhost:5433/dess_test"
+        "postgresql+psycopg://dess:dess_dev_only@localhost:5434/dess_test"
     )
 
     # Anthropic
