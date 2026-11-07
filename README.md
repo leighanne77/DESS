@@ -198,6 +198,140 @@ The **Measure / ongoing-monitoring** items (the SR 11-7 validation half) not yet
 management guidance. *HITL* — human-in-the-loop. *A2A / MCP* — agent-to-agent /
 model-context-protocol interop. *Fernet* — symmetric encryption (used for OAuth tokens at rest).
 
+## Repository setup — branch protection and the agent boundary
+An agent works in this repository. The configuration below is the target
+state, in which **the agent cannot alter the controls that bind it**. Three
+refusals carry that:
+
+- it cannot push to `main` — every change is a pull request a human merges;
+- it cannot touch `.github/workflows/**` — it works through a GitHub App
+  granted no Workflows permission, so the gates it runs under are not
+  editable from inside;
+- it cannot merge its own pull request — approval is required, and GitHub
+  does not let an author approve their own work.
+
+**Status, checked against GitHub on 2026-11-07: none of the three is in
+place yet.** The repository has no ruleset and no branch protection; merge
+commits, squash merges and rebase merges are all allowed; `main` accepts
+direct pushes. The agent pushes with the owner's own token, which carries
+the `workflow` scope, so it can edit the workflow files it runs under. The
+recent changes arrived as pull requests (#1–#4) because someone chose to
+open them, not because anything refused the alternative. This section says
+what to set up, not what exists.
+
+### Prerequisites
+
+**GitHub Pro** on the owning account if the repository is private — rulesets
+on a private repository are a paid feature. Public repositories get rulesets
+on the free plan. Admin on the repository.
+
+### Step 1 — merge methods
+
+Settings → General → Pull Requests: allow **rebase merging only**. Turn off
+merge commits, turn off squash merging, leave auto-merge off so the merge
+stays a human act.
+
+Rebase keeps `main` linear: each commit arrives as it was on the pull
+request, with its own message. A merge commit adds a commit nobody wrote; a
+squash throws away the commit boundaries and concatenates every message and
+trailer behind them. This repository has no commit-trailer gate and no
+history verifier today; if one is added later (one plan trailer per commit,
+refused otherwise), rebase is also the only method that leaves it true.
+
+### Step 2 — make the verifier run on pull requests
+
+A status check can only be *required* if GitHub has seen it run on a pull
+request. A workflow triggered on `push` alone never appears in the ruleset's
+picker, and requiring its name by hand leaves every pull request pending
+forever. Give every workflow both triggers — `.github/workflows/ci.yml`
+already has them:
+
+```yaml
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+```
+
+A workflow that checks a range of commits (none exists here yet) also needs
+a range that resolves for either event:
+
+```yaml
+--range "${{ github.event.pull_request.base.sha || github.event.before }}..${{ github.event.pull_request.head.sha || github.sha }}"
+```
+
+Land this **before** the ruleset goes active — once the App exists, workflow
+files can only be changed by a human.
+
+### Step 3 — the branch ruleset
+
+Settings → Rules → Rulesets → New ruleset → **New branch ruleset**.
+
+| Field | Value |
+|---|---|
+| Name | `main-protected` |
+| Enforcement status | Active |
+| Bypass list | **Repository admin**, bypass mode **for pull requests only** |
+| Target branches | Include default branch |
+
+Rules: restrict deletions · require linear history · require a pull request
+before merging, with **1** required approval, stale approvals dismissed on new
+commits, and **rebase** as the only allowed merge method · require status
+checks to pass, listing only checks that actually run on pull requests here
+(today: `Backend (pytest)` and `Frontend (build + e2e)`) · block force pushes.
+
+**Why the admin is in the bypass list.** GitHub does not allow anyone to
+approve their own pull request. With required approvals at 1 and an empty
+bypass list, a solo maintainer can never merge a pull request they authored —
+and workflow files are theirs alone to change, so they will author some.
+Bypass mode **for pull requests only** solves it precisely: direct pushes to
+`main` stay blocked for everyone including them, they can merge their own pull
+request, and the agent still cannot merge anything, because it is not on the
+list and cannot approve itself.
+
+**Deliberately left off, each for a reason:**
+
+- *Require signed commits* — if nothing signs commits yet, this refuses every
+  push from the agent's machine. A later hardening item, not a free win.
+- *Require approval of the most recent reviewable push* — demands approval
+  from someone other than whoever pushed, rebuilding the lockout the bypass
+  mode was chosen to avoid.
+- *Require an additional approval for unattributed Copilot pull requests* —
+  aimed at Copilot-authored work; an agent working through its own GitHub App
+  is a different actor, so the rule either never fires or fires wrongly.
+
+### Step 4 — find jobs that push to `main` first
+
+A scheduled workflow that commits and pushes to `main` starts failing the day
+the ruleset goes active, because the bypass list holds a person, not a robot.
+
+```
+grep -rl "git push" .github/workflows/
+```
+
+Retire it, or change it to open a pull request. A job whose date window has
+closed is harmless, but read it rather than assume. In this repository, as of
+2026-11-07, the grep finds nothing.
+
+### Step 5 — prove it
+
+From the agent's machine, these three refusals are the boundary:
+
+```
+git push origin HEAD:main            → refused: ruleset requires a pull request
+git push origin test/workflow-touch  → refused: no Workflows permission
+gh pr create --fill                  → a pull request URL; a human merges it by rebase
+```
+
+Until the steps above are done, nothing refuses the first two.
+
+### What this does not do
+
+It does not prove the gates ran, or ran unmodified — a workflow runs from the
+file in the commit being tested. That is a separate control, and until it
+exists it should not be described as existing.
+
 ## Run it locally (clone → run)
 
 Everything runs offline with a fictional demo dataset — no real data, no cloud account
